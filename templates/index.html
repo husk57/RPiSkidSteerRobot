@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Robot Controller</title>
+    </head>
+    <body>
+        <style>
+            #turning {
+                position:absolute;
+                left:30vw;
+                top:50vh;
+                width:200px;
+                height:500px;
+            }
+            #throttle {
+                position: absolute;
+                left: 60vw;
+                top: 50vh;
+                -webkit-transform: rotate(-90deg);
+                -moz-transform: rotate(-90deg);
+                -ms-transform: rotate(-90deg);
+                -o-transform: rotate(-90deg);
+                transform: rotate(-90deg);
+                -webkit-transform-origin: 50% 50%;
+-moz-transform-origin: 50% 50%;
+-ms-transform-origin: 50% 50%;
+-o-transform-origin: 50% 50%;
+transform-origin: 50% 50%;
+            }
+        </style>
+        <input type="range" min="-100" max="100" value="0" id="turning">
+        <input type="range" min="-100" max="100" value="0" id="throttle">
+        <script>
+
+        </script>
+    </body>
+</html>
