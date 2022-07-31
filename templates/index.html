@@ -31,7 +31,38 @@ transform-origin: 50% 50%;
         <input type="range" min="-100" max="100" value="0" id="turning">
         <input type="range" min="-100" max="100" value="0" id="throttle">
         <script>
+            let sendNetworkRequest = function(data) {
+                let httpRequest = new XMLHttpRequest();
+                httpRequest.responseType = "text"
+                httpRequest.timeout = 60000
+                httpRequest.withCredentials = true
+                httpRequest.open("POST", "http://0.0.0.0:5000/")
+                httpRequest.setRequestHeader("Content-Type", "application/json")
+                httpRequest.send(JSON.stringify({
+                    "turn": data[0].toString(),
+                    "throttle": data[1].toString()
+                }))
+            }
 
+            let turningDOM = document.getElementById("turning")
+            let throttleDOM = document.getElementById("throttle")
+            let inputState = [turningDOM.value, throttleDOM.value]
+            let lastRecorded = [turningDOM.value+1, throttleDOM.value+1] //purposely dont set to the defaults
+
+            turningDOM.addEventListener("input", () => {
+                inputState = [turningDOM.value, throttleDOM.value]
+            })
+            throttleDOM.addEventListener("input", () => {
+                inputState = [turningDOM.value, throttleDOM.value]
+            })
+            window.setInterval(() => {
+                if ((lastRecorded[0] != inputState[0]) || (lastRecorded[1] != inputState[1])) {
+                    //send network request
+                    sendNetworkRequest(inputState)
+                }
+                lastRecorded[0] = inputState[0]
+                lastRecorded[1] = inputState[1]
+            }, 100) //ping every 100ms
         </script>
     </body>
 </html>
