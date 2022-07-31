@@ -1,4 +1,5 @@
 from flask import Flask
+app = Flask(__name__)
 from flask import render_template
 from flask import request
 import RPi.GPIO as GPIO
@@ -22,18 +23,25 @@ rightPwmR = GPIO.PWM(rightDriverList[5], 100)
 rightPwmR.start(0)
 
 rightPwmL = GPIO.PWM(rightDriverList[6], 100)
-rightPwmL.start(100)
-
-app = Flask(__name__)
+rightPwmL.start(0)
 
 @app.route('/', methods = ['GET', 'POST'])
 def hello_world():
     dataToReturn = None
     if request.method == 'GET':
         dataToReturn = render_template('index.html')
-    else: 
+    else:
         data = request.get_json()
-        print(data)
+        throttle = int(data['throttle'])
+        turning = int(data['turn'])
+        print(throttle, turning)
+        if (throttle > 0):
+            rightPwmR.ChangeDutyCycle(throttle * 0.5)
+            rightPwmL.ChangeDutyCycle(0)
+        else:
+            rightPwmL.ChangeDutyCycle(-1*throttle * 0.5)
+            rightPwmR.ChangeDutyCycle(0)
+
         dataToReturn = "Ok."
     return dataToReturn
 if __name__ == '__main__':
