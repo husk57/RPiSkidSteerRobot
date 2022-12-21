@@ -1,13 +1,56 @@
 //#include <dummy.h>
 #include <WiFi.h>
+#include <AsyncTCP.h>
+#include <AsyncWebSocket.h>
 
 const char* ssid     = "DO NOT CONNECT TO";
 const char* password = "boobies!";
 
 //on port 8080
-WiFiServer server(8080);
+AsyncWebServer server(8080);
+AsyncWebSocket ws("/ws");
+bool isCoast = false;
+double coastCutoff = 0.1;
 
-String header;
+void tankDrive(double leftSide, double rightSide) {
+  //left side
+  if (isCoast == true && abs(leftSide) < coastCutoff) {
+    ledcWrite(0,0);
+    ledcWrite(1,0);
+    digitalWrite(2, LOW);
+    digitalWrite(18, LOW);
+  } else {
+    digitalWrite(2, HIGH);
+    digitalWrite(18, HIGH);
+    if (leftSide > 0) {
+      //right side
+      ledcWrite(1, int(leftSide*255));
+      ledcWrite(0,0);
+    } else {
+      //left side
+      ledcWrite(0, int(abs(leftSide)*255));
+      ledcWrite(1,0);
+    }
+  }
+}
+void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
+  if(type == WS_EVT_CONNECT){
+    Serial.println("Websocket client connection received");
+  } else if(type == WS_EVT_DISCONNECT){
+    Serial.println("Client disconnected");
+  } else if(type == WS_EVT_DATA){
+    String message = "";
+    for(size_t i=0; i<len; i++) {
+      message += (char) data[i];
+    }
+
+    int spliceIdx = message.indexOf("$");
+    double speed = message.substring(0,spliceIdx).toDouble();
+    double turn = message.substring(spliceIdx+1).toDouble();
+
+    tankDrive(speed, 0.0);
+  }
+}
 
 // the setup function runs once when you press reset or power the board
 void setup() {
@@ -17,28 +60,33 @@ void setup() {
   WiFi.softAP(ssid, password);
   IPAddress IP = WiFi.softAPIP();
   Serial.println(IP);
+  ws.onEvent(onWebSocketEvent);
+  server.addHandler(&ws);
   server.begin();
+
+  //left motor controller
+
   pinMode(15, OUTPUT);
+  digitalWrite(15, HIGH); //power for esc
+  pinMode(2, OUTPUT); //left enable
+  pinMode(18, OUTPUT); //right enable
+  //default to coast
+  digitalWrite(2, LOW);
+  digitalWrite(18, LOW);
+  ledcAttachPin(4, 0); //left pwm
+  ledcAttachPin(5, 1); //right pwm
+  ledcSetup(0, 100, 8);
+  ledcSetup(1, 100, 8);
+  ledcWrite(0, 0);
+  ledcWrite(1, 0);
+
+  if (isCoast == false) {
+    digitalWrite(2, HIGH);
+    digitalWrite(18, HIGH);
+  }
 }
 
 // the loop function runs over and over again forever
 void loop() {
-  WiFiClient client = server.available(); 
-  if (client) {
-    Serial.println("New Client.");  
-    while (client.connected()) {
-      if (client.available()) {
-        char c = client.read();
-        Serial.println(c);
-        client.println("HTTP/1.1 200 OK");
-        client.println("Content-type:text/html");
-        client.println("Connection: close");
-        client.println();
-      }
-    }
-  }
-  digitalWrite(15, HIGH);  // turn the LED on (HIGH is the voltage level)
-  delay(1000);     
-  digitalWrite(15, LOW);   // turn the LED off by making the voltage LOW
-  delay(1000);                      // wait for a second
+
 }
