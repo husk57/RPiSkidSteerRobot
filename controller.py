@@ -12,7 +12,7 @@ pygame.init()
 joystick = pygame.joystick.Joystick(0)
 joystick.init()
 
-speed = 0.69
+speed = .5
 turn = 0
 trim = 0.2
 

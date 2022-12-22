@@ -32,6 +32,26 @@ void tankDrive(double leftSide, double rightSide) {
       ledcWrite(1,0);
     }
   }
+
+  //right side
+  if (isCoast == true && abs(rightSide) < coastCutoff) {
+    ledcWrite(2, 0);
+    ledcWrite(3, 0);
+    digitalWrite(12, LOW);
+    digitalWrite(14, LOW);
+  } else {
+    digitalWrite(12, HIGH);
+    digitalWrite(14, HIGH);
+    if (rightSide > 0) {
+      //right side
+      ledcWrite(3, int(rightSide*255));
+      ledcWrite(2,0);
+    } else {
+      //left side
+      ledcWrite(2, int(abs(rightSide)*255));
+      ledcWrite(3,0);
+    }
+  }
 }
 void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   if(type == WS_EVT_CONNECT){
@@ -48,7 +68,7 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, Aw
     double speed = message.substring(0,spliceIdx).toDouble();
     double turn = message.substring(spliceIdx+1).toDouble();
 
-    tankDrive(speed, 0.0);
+    tankDrive(speed, speed/2);
   }
 }
 
@@ -75,14 +95,31 @@ void setup() {
   digitalWrite(18, LOW);
   ledcAttachPin(4, 0); //left pwm
   ledcAttachPin(5, 1); //right pwm
-  ledcSetup(0, 100, 8);
-  ledcSetup(1, 100, 8);
+  ledcSetup(0, 1000, 8);
+  ledcSetup(1, 1000, 8);
   ledcWrite(0, 0);
   ledcWrite(1, 0);
+
+  //right motor controller
+  pinMode(13, OUTPUT);
+  digitalWrite(13, HIGH); //power for esc
+  pinMode(12, OUTPUT); //left enable
+  pinMode(14, OUTPUT); //right enable
+  //default to coast
+  digitalWrite(12, LOW);
+  digitalWrite(14, LOW);
+  ledcAttachPin(27, 2); //left pwm
+  ledcAttachPin(26, 3); //right pwm
+  ledcSetup(2, 1000, 8);
+  ledcSetup(3, 1000, 8);
+  ledcWrite(2, 0);
+  ledcWrite(3, 0);
 
   if (isCoast == false) {
     digitalWrite(2, HIGH);
     digitalWrite(18, HIGH);
+    digitalWrite(12, HIGH);
+    digitalWrite(14, HIGH);
   }
 }
 
