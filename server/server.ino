@@ -11,6 +11,22 @@ AsyncWebServer server(8080);
 AsyncWebSocket ws("/ws");
 bool isCoast = false;
 double coastCutoff = 0.1;
+double leftSpeedPrev = 0;
+double rightSpeedPrev = 0;
+double leftSpeedCurrent = 0;
+double rightSpeedCurrent = 0;
+double maxAcceleration = 0.1; //per second
+unsigned long prev_timestamp = millis();
+
+int sign(int value) {
+  if (value > 0) {
+    return 1;
+  } else if (value < 0) {
+    return -1;
+  } else {
+    return 0;
+  }
+}
 
 void tankDrive(double leftSide, double rightSide) {
   //left side
@@ -68,7 +84,9 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, Aw
     double speed = message.substring(0,spliceIdx).toDouble();
     double turn = message.substring(spliceIdx+1).toDouble();
 
-    tankDrive(speed, speed/2);
+  leftSpeedCurrent = speed;
+  rightSpeedCurrent = speed;
+  tankDrive(speed, speed);
   }
 }
 
@@ -125,5 +143,18 @@ void setup() {
 
 // the loop function runs over and over again forever
 void loop() {
-
+  unsigned long dt = millis() - prev_timestamp;
+  dt /= 1000.; //convert to seconds
+  double maxDelta = maxAcceleration*dt;
+  double right = rightSpeedCurrent - rightSpeedPrev;
+  double left = leftSpeedCurrent - leftSpeedPrev;
+  if (abs(right) > maxDelta) {
+    rightSpeedCurrent = rightSpeedPrev + maxAcceleration*sign(right);
+  }
+  if (abs(left) > maxDelta) {
+    left = leftSpeedPrev + maxAcceleration*sign(left);
+  }
+  //tankDrive(leftSpeedCurrent, rightSpeedCurrent);
+  leftSpeedPrev = leftSpeedCurrent;
+  rightSpeedPrev = rightSpeedCurrent;
 }
