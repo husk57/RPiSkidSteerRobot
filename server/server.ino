@@ -1,4 +1,3 @@
-//#include <dummy.h>
 #include <WiFi.h>
 #include <AsyncTCP.h>
 #include <AsyncWebSocket.h>
@@ -11,24 +10,12 @@ AsyncWebServer server(8080);
 AsyncWebSocket ws("/ws");
 bool isCoast = false;
 double coastCutoff = 0.1;
-double leftSpeedPrev = 0;
-double rightSpeedPrev = 0;
-double leftSpeedCurrent = 0;
-double rightSpeedCurrent = 0;
-double maxAcceleration = 0.1; //per second
 unsigned long prev_timestamp = millis();
 
-int sign(int value) {
-  if (value > 0) {
-    return 1;
-  } else if (value < 0) {
-    return -1;
-  } else {
-    return 0;
-  }
-}
-
 void tankDrive(double leftSide, double rightSide) {
+  leftSide = constrain(leftSide, -1, 1);
+  rightSide = constrain(rightSide, -1, 1);
+
   //left side
   if (isCoast == true && abs(leftSide) < coastCutoff) {
     ledcWrite(0,0);
@@ -69,6 +56,9 @@ void tankDrive(double leftSide, double rightSide) {
     }
   }
 }
+double speed = 0.0;
+double turn = 0.0;
+
 void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventType type, void * arg, uint8_t *data, size_t len){
   if(type == WS_EVT_CONNECT){
     Serial.println("Websocket client connection received");
@@ -81,12 +71,8 @@ void onWebSocketEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, Aw
     }
 
     int spliceIdx = message.indexOf("$");
-    double speed = message.substring(0,spliceIdx).toDouble();
-    double turn = message.substring(spliceIdx+1).toDouble();
-
-  leftSpeedCurrent = speed;
-  rightSpeedCurrent = speed;
-  tankDrive(speed, speed);
+    speed = message.substring(0,spliceIdx).toDouble();
+    turn = -message.substring(spliceIdx+1).toDouble();
   }
 }
 
@@ -141,20 +127,43 @@ void setup() {
   }
 }
 
-// the loop function runs over and over again forever
+int sign(double value) {
+  if (value > 0) {
+    return 1;
+  } else if (value < 0) {
+    return -1;
+  } else {
+    return 0;
+  }
+}
+
+double currentLeftSpeed = 0.0;
+double currentRightSpeed = 0.0;
+double maxSpeed = 1;
+double maxAcceleration = 1.; //per second
 void loop() {
-  unsigned long dt = millis() - prev_timestamp;
-  dt /= 1000.; //convert to seconds
-  double maxDelta = maxAcceleration*dt;
-  double right = rightSpeedCurrent - rightSpeedPrev;
-  double left = leftSpeedCurrent - leftSpeedPrev;
-  if (abs(right) > maxDelta) {
-    rightSpeedCurrent = rightSpeedPrev + maxAcceleration*sign(right);
+  double desiredLeftSpeed = maxSpeed*(speed+turn);
+  double desiredRightSpeed = maxSpeed*(speed-turn);
+  //invert left side
+  desiredLeftSpeed *= -1;
+
+  //cap acceleration
+  unsigned long currentTimestamp = millis();
+  double timeDelta = (currentTimestamp - prev_timestamp) / 1000.0; // time delta in seconds
+  double errLeft = desiredLeftSpeed - currentLeftSpeed;
+  double errRight = desiredRightSpeed - currentRightSpeed;
+  double maxChange = maxAcceleration * timeDelta;
+  if (abs(errLeft) > maxChange) {
+    currentLeftSpeed += maxChange * sign(errLeft);
+  } else {
+    currentLeftSpeed = desiredLeftSpeed;
   }
-  if (abs(left) > maxDelta) {
-    left = leftSpeedPrev + maxAcceleration*sign(left);
+  if (abs(errRight) > maxChange) {
+    currentRightSpeed += maxChange * sign(errRight);
+  } else {
+    currentRightSpeed = desiredRightSpeed;
   }
-  //tankDrive(leftSpeedCurrent, rightSpeedCurrent);
-  leftSpeedPrev = leftSpeedCurrent;
-  rightSpeedPrev = rightSpeedCurrent;
+  //output  
+  tankDrive(currentLeftSpeed, currentRightSpeed);
+  prev_timestamp = currentTimestamp;
 }
