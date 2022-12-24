@@ -164,6 +164,6 @@ void loop() {
     currentRightSpeed = desiredRightSpeed;
   }
   //output  
-  tankDrive(currentLeftSpeed, currentRightSpeed);
+  tankDrive(desiredLeftSpeed, desiredRightSpeed);
   prev_timestamp = currentTimestamp;
 }
